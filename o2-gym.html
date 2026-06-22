@@ -1,0 +1,883 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>O² Gym - Oxygen Fitness | Λάρισα</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@200;300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Space Grotesk', sans-serif;
+      background: #000;
+      color: #fff;
+      overflow-x: hidden;
+    }
+
+    /* ─── 3D Canvas ─── */
+    #bg-canvas { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 0; pointer-events: none; }
+
+    /* ─── Content ─── */
+    .content { position: relative; z-index: 1; }
+    
+    /* Dark overlay for readability against bright particles */
+    .content::before {
+      content: '';
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: radial-gradient(ellipse at center, rgba(0,0,0,0) 30%, rgba(0,0,0,0.4) 100%);
+      pointer-events: none;
+      z-index: -1;
+    }
+
+    /* ─── Navigation ─── */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      padding: 1.2rem 2rem;
+      display: flex; justify-content: space-between; align-items: center;
+      background: rgba(0,0,0,0.7);
+      backdrop-filter: blur(30px) saturate(1.5);
+      -webkit-backdrop-filter: blur(30px) saturate(1.5);
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      transition: all 0.3s;
+    }
+    nav .logo {
+      font-size: 1.5rem; font-weight: 700;
+      color: #fff; letter-spacing: -0.02em;
+      text-shadow: 0 0 40px rgba(255,255,255,0.1);
+    }
+    nav .links { display: flex; gap: 2rem; align-items: center; }
+    nav .links a {
+      color: rgba(255,255,255,0.65); text-decoration: none; font-size: 0.85rem;
+      font-weight: 500; letter-spacing: 0.05em; transition: color 0.3s, text-shadow 0.3s;
+      position: relative; text-shadow: 0 2px 10px rgba(0,0,0,0.4);
+    }
+    nav .links a::after {
+      content: ''; position: absolute; bottom: -4px; left: 0; right: 0;
+      height: 1px; background: #fff; border-radius: 2px;
+      transform: scaleX(0); transition: transform 0.3s;
+    }
+    nav .links a:hover { color: #fff; text-shadow: 0 0 20px rgba(255,255,255,0.3); }
+    nav .links a:hover::after { transform: scaleX(1); }
+    nav .links .cta {
+      padding: 0.5rem 1.5rem;
+      background: rgba(255,255,255,0.08);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 100px; color: #fff; font-weight: 600;
+    }
+    nav .links .cta::after { display: none; }
+    nav .links .cta:hover { background: rgba(255,255,255,0.15); }
+    nav .mobile-toggle { display: none; font-size: 1.5rem; cursor: pointer; color: rgba(255,255,255,0.5); }
+
+    @media (max-width: 768px) {
+      nav { padding: 1rem 1.2rem; }
+      nav .links { display: none; flex-direction: column; position: absolute; top: 100%; left: 0; right: 0;
+        background: rgba(0,0,0,0.95); backdrop-filter: blur(30px);
+        padding: 1rem; gap: 1rem; border-bottom: 1px solid rgba(255,255,255,0.06); }
+      nav .links.open { display: flex; }
+      nav .mobile-toggle { display: block; }
+    }
+
+    /* ─── Glass Utility ─── */
+    .glass {
+      background: rgba(255,255,255,0.04);
+      backdrop-filter: blur(24px) saturate(1.4);
+      -webkit-backdrop-filter: blur(24px) saturate(1.4);
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+
+    /* ─── Hero ─── */
+    .hero {
+      min-height: 100vh; display: flex; flex-direction: column;
+      justify-content: center; align-items: center; text-align: center;
+      padding: 6rem 2rem 4rem;
+      opacity: 0; transform: translateY(30px);
+      animation: fadeUp 1s cubic-bezier(0.16,1,0.3,1) forwards;
+    }
+    .hero .tag {
+      display: inline-block; padding: 0.4rem 1rem;
+      background: rgba(255,255,255,0.08);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 100px;
+      font-size: 0.75rem; font-weight: 500; text-transform: uppercase;
+      letter-spacing: 0.15em; color: rgba(255,255,255,0.75);
+      margin-bottom: 1.5rem; text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+    }
+    .hero h1 {
+      font-size: clamp(3rem, 12vw, 8rem); font-weight: 800;
+      line-height: 1.0; letter-spacing: -0.04em;
+      color: #fff;
+      text-shadow: 0 0 40px rgba(0,0,0,0.5), 0 0 80px rgba(0,0,0,0.3);
+    }
+    .hero h1 .sm {
+      display: block; font-size: 0.25em;
+      color: rgba(255,255,255,0.3); font-weight: 300;
+      letter-spacing: 0.3em; margin-top: 0.5rem;
+    }
+    .hero p {
+      margin-top: 1.5rem; font-size: clamp(1rem, 2vw, 1.2rem);
+      color: rgba(255,255,255,0.65); max-width: 600px; line-height: 1.7;
+      font-weight: 300; text-shadow: 0 2px 20px rgba(0,0,0,0.5);
+    }
+    .hero .buttons { margin-top: 2.5rem; display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center; }
+    .hero .btn {
+      padding: 0.9rem 2rem; border-radius: 100px; font-weight: 600;
+      font-size: 0.9rem; text-decoration: none; transition: all 0.3s;
+      letter-spacing: 0.02em;
+    }
+    .hero .btn-primary {
+      background: rgba(255,255,255,0.1);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255,255,255,0.15);
+      color: #fff;
+    }
+    .hero .btn-primary:hover { background: rgba(255,255,255,0.2); transform: scale(1.03); }
+    .hero .btn-outline {
+      border: 1px solid rgba(255,255,255,0.15);
+      color: rgba(255,255,255,0.6);
+      background: transparent;
+    }
+    .hero .btn-outline:hover { border-color: #fff; color: #fff; background: rgba(255,255,255,0.05); }
+
+    .scroll-indicator {
+      position: absolute; bottom: 2rem; left: 50%; transform: translateX(-50%);
+      display: flex; flex-direction: column; align-items: center; gap: 0.5rem;
+    }
+    .mouse { width: 24px; height: 38px; border: 1.5px solid rgba(255,255,255,0.15); border-radius: 12px; position: relative; }
+    .mouse::after {
+      content: ''; position: absolute; top: 6px; left: 50%; transform: translateX(-50%);
+      width: 2px; height: 7px; background: rgba(255,255,255,0.5); border-radius: 2px;
+      animation: scrollAnim 2s ease infinite;
+    }
+
+    /* ─── Sections ─── */
+    section { padding: 5rem 2rem; position: relative; }
+    .section-title {
+      font-size: clamp(2rem, 5vw, 3.5rem); font-weight: 700;
+      margin-bottom: 0.8rem; text-align: center;
+      letter-spacing: -0.03em; color: #fff;
+      text-shadow: 0 2px 30px rgba(0,0,0,0.6), 0 0 60px rgba(0,0,0,0.3);
+    }
+    .section-sub {
+      text-align: center; color: rgba(255,255,255,0.6); max-width: 600px;
+      margin: 0 auto 3rem; font-size: 1rem; line-height: 1.7; font-weight: 300;
+      text-shadow: 0 2px 20px rgba(0,0,0,0.5);
+    }
+    .container { max-width: 1200px; margin: 0 auto; }
+
+    /* ─── Stats ─── */
+    .stats {
+      display: flex; justify-content: center; gap: 3rem;
+      padding: 3rem 0; flex-wrap: wrap;
+    }
+    .stat { text-align: center; }
+    .stat-num {
+      font-size: 3.5rem; font-weight: 700; color: #fff;
+      text-shadow: 0 2px 20px rgba(0,0,0,0.5);
+    }
+    .stat-label {
+      font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.15em;
+      color: rgba(255,255,255,0.3); margin-top: 0.3rem;
+    }
+
+    /* ─── Features Grid ─── */
+    .features { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; }
+    .feature {
+      background: rgba(0,0,0,0.35);
+      backdrop-filter: blur(24px) saturate(1.4);
+      -webkit-backdrop-filter: blur(24px) saturate(1.4);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 20px; padding: 2rem;
+      transition: all 0.4s cubic-bezier(0.16,1,0.3,1);
+    }
+    .feature:hover {
+      transform: translateY(-8px) scale(1.02);
+      border-color: rgba(255,255,255,0.15);
+      background: rgba(255,255,255,0.06);
+      box-shadow: 0 30px 80px rgba(0,0,0,0.4), 0 0 60px rgba(255,255,255,0.03);
+    }
+    .feature .icon { font-size: 2rem; margin-bottom: 1rem; filter: grayscale(1) brightness(1.2); }
+    .feature h3 { font-size: 1.1rem; font-weight: 600; margin-bottom: 0.6rem; color: #fff; }
+    .feature p { font-size: 0.9rem; color: rgba(255,255,255,0.6); line-height: 1.7; font-weight: 300; text-shadow: 0 1px 10px rgba(0,0,0,0.4); }
+
+    /* ─── Programs ─── */
+    .programs { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.5rem; }
+    .program {
+      background: rgba(0,0,0,0.35);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 20px; padding: 2rem 1.5rem; text-align: center;
+      transition: all 0.4s;
+    }
+    .program:hover { transform: translateY(-6px); border-color: rgba(255,255,255,0.15); }
+    .program .emoji { font-size: 2.5rem; margin-bottom: 1rem; filter: grayscale(1) brightness(1.3); }
+    .program h4 { font-size: 1rem; font-weight: 600; margin-bottom: 0.5rem; color: #fff; }
+    .program p { font-size: 0.85rem; color: rgba(255,255,255,0.55); font-weight: 300; text-shadow: 0 1px 10px rgba(0,0,0,0.4); }
+
+    /* ─── Pricing ─── */
+    .pricing { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.5rem; }
+    .plan {
+      background: rgba(0,0,0,0.35);
+      backdrop-filter: blur(24px) saturate(1.4);
+      -webkit-backdrop-filter: blur(24px) saturate(1.4);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 24px; padding: 2.5rem 2rem; text-align: center;
+      transition: all 0.4s; position: relative;
+    }
+    .plan:hover { transform: translateY(-8px); border-color: rgba(255,255,255,0.15); box-shadow: 0 30px 80px rgba(0,0,0,0.3); }
+    .plan.popular {
+      border-color: rgba(255,255,255,0.2);
+      background: rgba(0,0,0,0.45);
+    }
+    .plan.popular .badge {
+      position: absolute; top: -12px; left: 50%; transform: translateX(-50%);
+      padding: 0.3rem 1rem;
+      background: rgba(255,255,255,0.1);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 100px; font-size: 0.65rem;
+      font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: #fff;
+    }
+    .plan .duration { font-size: 0.75rem; color: rgba(255,255,255,0.5); text-transform: uppercase; letter-spacing: 0.15em; text-shadow: 0 1px 10px rgba(0,0,0,0.4); }
+    .plan .price {
+      font-size: 3.5rem; font-weight: 700; margin: 0.5rem 0; color: #fff;
+      text-shadow: 0 2px 20px rgba(0,0,0,0.5);
+    }
+    .plan .price-sub { font-size: 1rem; color: rgba(255,255,255,0.3); font-weight: 300; }
+    .plan .perks { list-style: none; margin: 1.5rem 0; text-align: left; }
+    .plan .perks li {
+      padding: 0.5rem 0; font-size: 0.85rem; color: rgba(255,255,255,0.65);
+      display: flex; align-items: center; gap: 0.6rem;
+      border-bottom: 1px solid rgba(255,255,255,0.04); font-weight: 300;
+      text-shadow: 0 1px 10px rgba(0,0,0,0.4);
+    }
+    .plan .perks li::before { content: '✦'; color: rgba(255,255,255,0.5); font-size: 0.6rem; }
+    .plan .btn-plan {
+      display: inline-block; padding: 0.8rem 2rem; border-radius: 100px;
+      font-weight: 600; font-size: 0.85rem; text-decoration: none;
+      transition: all 0.3s; width: 100%;
+    }
+    .plan .btn-plan-primary {
+      background: rgba(255,255,255,0.1);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255,255,255,0.15);
+      color: #fff;
+    }
+    .plan .btn-plan-primary:hover { background: rgba(255,255,255,0.2); }
+    .plan .btn-plan-outline {
+      border: 1px solid rgba(255,255,255,0.1);
+      color: rgba(255,255,255,0.5);
+    }
+    .plan .btn-plan-outline:hover { border-color: rgba(255,255,255,0.3); color: #fff; }
+    .pricing-note {
+      text-align: center; margin-top: 1.5rem; font-size: 0.8rem;
+      color: rgba(255,255,255,0.45); line-height: 1.6; font-weight: 300;
+      text-shadow: 0 1px 10px rgba(0,0,0,0.4);
+    }
+
+    /* ─── About ─── */
+    .about-text {
+      max-width: 700px; margin: 0 auto; text-align: center;
+      font-size: 1rem; color: rgba(255,255,255,0.6); line-height: 1.8; font-weight: 300;
+      text-shadow: 0 2px 20px rgba(0,0,0,0.5);
+    }
+
+    /* ─── Contact ─── */
+    .contact-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; max-width: 800px; margin: 0 auto; }
+    @media (max-width: 600px) { .contact-grid { grid-template-columns: 1fr; } }
+    .contact-item {
+      background: rgba(0,0,0,0.35);
+      backdrop-filter: blur(24px);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 20px; padding: 1.5rem; text-align: center;
+      transition: all 0.3s;
+    }
+    .contact-item:hover { border-color: rgba(255,255,255,0.15); }
+    .contact-item .icon { font-size: 1.5rem; margin-bottom: 0.5rem; filter: grayscale(1) brightness(1.2); }
+    .contact-item h4 { font-size: 0.8rem; font-weight: 600; margin-bottom: 0.3rem; text-transform: uppercase; letter-spacing: 0.12em; color: rgba(255,255,255,0.75); text-shadow: 0 1px 10px rgba(0,0,0,0.4); }
+    .contact-item p, .contact-item a {
+      font-size: 0.9rem; color: rgba(255,255,255,0.55); text-decoration: none; transition: color 0.3s; font-weight: 300;
+      text-shadow: 0 1px 10px rgba(0,0,0,0.4);
+    }
+    .contact-item a:hover { color: #fff; }
+
+    .social-links { display: flex; justify-content: center; gap: 1.5rem; margin-top: 2rem; }
+    .social-links a {
+      width: 48px; height: 48px; border-radius: 50%;
+      border: 1px solid rgba(255,255,255,0.1);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.3rem; text-decoration: none; color: rgba(255,255,255,0.4);
+      transition: all 0.3s;
+    }
+    .social-links a:hover { border-color: rgba(255,255,255,0.3); color: #fff; transform: translateY(-3px); }
+
+    footer {
+      text-align: center; padding: 2rem;
+      border-top: 1px solid rgba(255,255,255,0.04);
+      font-size: 0.8rem; color: rgba(255,255,255,0.2); font-weight: 300;
+    }
+
+    /* ─── Stagger Reveal ─── */
+    .reveal { opacity: 0; transform: translateY(40px); transition: all 0.8s cubic-bezier(0.16,1,0.3,1); }
+    .reveal.visible { opacity: 1; transform: translateY(0); }
+    .reveal-scale { opacity: 0; transform: scale(0.85); transition: all 0.9s cubic-bezier(0.16,1,0.3,1); }
+    .reveal-scale.visible { opacity: 1; transform: scale(1); }
+
+    /* ─── Scrollbar ─── */
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: #000; }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.3); }
+
+    @keyframes fadeUp { to { opacity: 1; transform: translateY(0); } }
+    @keyframes scrollAnim {
+      0%,100% { transform: translateX(-50%) translateY(0); opacity: 1; }
+      50% { transform: translateX(-50%) translateY(8px); opacity: 0.3; }
+    }
+
+    /* ─── Section Dividers ─── */
+    .divider {
+      width: 1px; height: 60px; margin: 0 auto;
+      background: linear-gradient(180deg, transparent, rgba(255,255,255,0.1), transparent);
+    }
+  </style>
+</head>
+<body>
+
+  <div id="bg-canvas"></div>
+
+  <nav>
+    <div class="logo">O²</div>
+    <div class="links" id="navLinks">
+      <a href="#features">Υπηρεσίες</a>
+      <a href="#programs">Προγράμματα</a>
+      <a href="#pricing">Συνδρομές</a>
+      <a href="#contact">Επικοινωνία</a>
+      <a href="#contact" class="cta">Δωρεάν Δοκιμή</a>
+    </div>
+    <div class="mobile-toggle" onclick="document.getElementById('navLinks').classList.toggle('open')">☰</div>
+  </nav>
+
+  <div class="content">
+
+    <!-- Hero -->
+    <section class="hero">
+      <div class="tag">Λάρισα · Από 2013</div>
+      <h1>
+        O² GYM
+        <span class="sm">OXYGEN FITNESS</span>
+      </h1>
+      <p>800 τ.μ. TechnoGym εξοπλισμός. 11 ομαδικά προγράμματα.<br>Η φόρμα σου ξεκινά εδώ.</p>
+      <div class="buttons">
+        <a href="#pricing" class="btn btn-primary">Συνδρομές</a>
+        <a href="#contact" class="btn btn-outline">Δωρεάν Δοκιμή</a>
+      </div>
+      <div class="scroll-indicator"><div class="mouse"></div></div>
+    </section>
+
+    <!-- Stats -->
+    <section style="padding: 2rem;">
+      <div class="stats container">
+        <div class="stat reveal"><div class="stat-num" data-count="13">0</div><div class="stat-label">Χρόνια</div></div>
+        <div class="stat reveal"><div class="stat-num" data-count="800">0</div><div class="stat-label">τ.μ. Χώρος</div></div>
+        <div class="stat reveal"><div class="stat-num" data-count="11">0</div><div class="stat-label">Προγράμματα</div></div>
+        <div class="stat reveal"><div class="stat-num" data-count="20">0</div><div class="stat-label">Προπονητές</div></div>
+      </div>
+    </section>
+
+    <div class="divider"></div>
+
+    <!-- Features -->
+    <section id="features" class="container">
+      <h2 class="section-title reveal-scale">Γιατί O²;</h2>
+      <p class="section-sub reveal">Δεν είμαστε απλά γυμναστήριο — είμαστε κοινότητα.</p>
+      <div class="features">
+        <div class="feature reveal"><div class="icon">🏋️</div><h3>TechnoGym Εξοπλισμός</h3><p>Κορυφαία όργανα από την Ιταλία. Κάθε επανάληψη μετράει.</p></div>
+        <div class="feature reveal"><div class="icon">🧘</div><h3>Pilates Equipment</h3><p>Reformer & Tower. Ατομικές ή ομαδικές συνεδρίες έως 6 άτομα.</p></div>
+        <div class="feature reveal"><div class="icon">📱</div><h3>QR Κάρτα Μέλους</h3><p>Καινοτομία. QR barcode στο email σου. Ή πλαστική κάρτα.</p></div>
+        <div class="feature reveal"><div class="icon">🛍️</div><h3>Αθλητικός Ρουχισμός</h3><p>Μεγάλη γκάμα αθλητικού ρουχισμού O².</p></div>
+        <div class="feature reveal"><div class="icon">📶</div><h3>Δωρεάν WiFi</h3><p>100mb/s. Μουσική χωρίς διακοπές στην προπόνηση σου.</p></div>
+        <div class="feature reveal"><div class="icon">🚿</div><h3>Αποδυτήρια</h3><p>Λειτουργικός χώρος — φρέσκος πριν κι ακόμα πιο φρέσκος μετά.</p></div>
+      </div>
+    </section>
+
+    <div class="divider"></div>
+
+    <!-- Programs -->
+    <section id="programs" class="container">
+      <h2 class="section-title reveal-scale">11 Ομαδικά Προγράμματα</h2>
+      <p class="section-sub reveal">Από Pilates μέχρι functional. Επέλεξε αυτό που σου ταιριάζει.</p>
+      <div class="programs">
+        <div class="program reveal"><div class="emoji">🔥</div><h4>Functional</h4><p>Ολόσωμη εκγύμναση με λειτουργικές ασκήσεις</p></div>
+        <div class="program reveal"><div class="emoji">💪</div><h4>Strength</h4><p>Δύναμη & αντοχή</p></div>
+        <div class="program reveal"><div class="emoji">🧘</div><h4>Pilates Reformer</h4><p>Με σύγχρονα όργανα</p></div>
+        <div class="program reveal"><div class="emoji">🏃</div><h4>Cardio Blast</h4><p>Κάψε θερμίδες γρήγορα</p></div>
+        <div class="program reveal"><div class="emoji">🤸</div><h4>Stretching</h4><p>Ευελιξία & αποκατάσταση</p></div>
+        <div class="program reveal"><div class="emoji">⚡</div><h4>HIIT</h4><p>Έντονη διαλειμματική</p></div>
+        <div class="program reveal"><div class="emoji">🎯</div><h4>Personal Training</h4><p>1-on-1 με ειδικό προπονητή</p></div>
+        <div class="program reveal"><div class="emoji">🔄</div><h4>Body Pump</h4><p>Με μπάρα & βάρη</p></div>
+      </div>
+    </section>
+
+    <div class="divider"></div>
+
+    <!-- Pricing -->
+    <section id="pricing" class="container">
+      <h2 class="section-title reveal-scale">Διάλεξε Πακέτο</h2>
+      <p class="section-sub reveal">Βάλε ΤΕΛΟΣ στις αναβολές. Ξεκίνα σήμερα.</p>
+      <div class="pricing">
+        <div class="plan reveal">
+          <div class="duration">Μηνιαίο</div>
+          <div class="price">45€</div>
+          <ul class="perks">
+            <li>Πλάνο προπόνησης</li>
+            <li>Όλα Ομαδικά Προγράμματα</li>
+            <li>Απεριόριστες επισκέψεις</li>
+            <li>Αποδυτήρια</li>
+          </ul>
+          <a href="#contact" class="btn-plan btn-plan-outline">Ξεκίνα</a>
+        </div>
+        <div class="plan popular reveal">
+          <div class="badge">Δημοφιλές</div>
+          <div class="duration">Τρίμηνο</div>
+          <div class="price">125€</div>
+          <ul class="perks">
+            <li>Πλάνο προπόνησης</li>
+            <li>Όλα Ομαδικά Προγράμματα</li>
+            <li>Απεριόριστες επισκέψεις</li>
+            <li>Αποδυτήρια</li>
+          </ul>
+          <a href="#contact" class="btn-plan btn-plan-primary">Ξεκίνα</a>
+        </div>
+        <div class="plan reveal">
+          <div class="duration">Εξάμηνο</div>
+          <div class="price">180€</div>
+          <ul class="perks">
+            <li>Πλάνο προπόνησης</li>
+            <li>Όλα Ομαδικά Προγράμματα</li>
+            <li>Απεριόριστες επισκέψεις</li>
+            <li>Αποδυτήρια</li>
+          </ul>
+          <a href="#contact" class="btn-plan btn-plan-outline">Ξεκίνα</a>
+        </div>
+        <div class="plan reveal">
+          <div class="duration">Ετήσιο</div>
+          <div class="price">260€</div>
+          <ul class="perks">
+            <li>Πλάνο προπόνησης</li>
+            <li>Όλα Ομαδικά Προγράμματα</li>
+            <li>Απεριόριστες επισκέψεις</li>
+            <li>Αποδυτήρια</li>
+          </ul>
+          <a href="#contact" class="btn-plan btn-plan-outline">Ξεκίνα</a>
+        </div>
+      </div>
+      <p class="pricing-note reveal">*Ειδικές τιμές για φοιτητές & Σώματα Ασφαλείας. Δυνατότητα δόσεων.</p>
+    </section>
+
+    <div class="divider"></div>
+
+    <!-- About -->
+    <section class="container">
+      <h2 class="section-title reveal-scale">Η Ομάδα</h2>
+      <div class="about-text reveal">
+        <p>Μία ομάδα σχεδόν 20 ανθρώπων. Άρτια εκπαιδευμένο προσωπικό, εξοπλισμός TechnoGym, 11 προγράμματα. Αποστολή μας: η καλύτερη δυνατή εμπειρία για κάθε μέλος.</p>
+        <br>
+        <p style="color: rgba(255,255,255,0.6);">Η πρώτη μέρα είναι δωρεάν. Δεν έχεις τίποτα να χάσεις.</p>
+      </div>
+    </section>
+
+    <div class="divider"></div>
+
+    <!-- Contact -->
+    <section id="contact" class="container">
+      <h2 class="section-title reveal-scale">Επικοινωνία</h2>
+      <p class="section-sub reveal">Κέντρο Λάρισας. Έλα για δοκιμή χωρίς υποχρέωση.</p>
+      <div class="contact-grid">
+        <div class="contact-item reveal">
+          <div class="icon">📍</div>
+          <h4>Διεύθυνση</h4>
+          <p>Κένταυρων 2Α, Λάρισα 412 22</p>
+        </div>
+        <div class="contact-item reveal">
+          <div class="icon">📞</div>
+          <h4>Τηλέφωνο</h4>
+          <p>2410 000000</p>
+        </div>
+        <div class="contact-item reveal">
+          <div class="icon">📧</div>
+          <h4>Email</h4>
+          <a href="mailto:info@oxygenfitness.gr">info@oxygenfitness.gr</a>
+        </div>
+        <div class="contact-item reveal">
+          <div class="icon">🕒</div>
+          <h4>Ωράριο</h4>
+          <p>Δευ-Παρ: 06:00-23:00 · Σαβ: 08:00-20:00</p>
+        </div>
+      </div>
+      <div class="social-links">
+        <a href="https://www.instagram.com/oxygenfitness.o2/" target="_blank">📷</a>
+        <a href="https://www.facebook.com/OxygenFitnessDownTown/" target="_blank">📘</a>
+        <a href="https://www.oxygenfitness.gr/" target="_blank">🌐</a>
+      </div>
+    </section>
+
+    <footer>
+      <p>© 2026 O² GYM — Oxygen Fitness · Λάρισα</p>
+    </footer>
+
+  </div>
+
+  <!-- ─── Three.js — black/white scroll-driven mayhem ─── -->
+  <script type="importmap">
+  { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } }
+  </script>
+
+  <script type="module">
+    import * as THREE from 'three';
+
+    const canvas = document.getElementById('bg-canvas');
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    canvas.appendChild(renderer.domElement);
+
+    // ─── Shared white particle texture ───
+    const tex = (() => {
+      const c = document.createElement('canvas'); c.width = 32; c.height = 32;
+      const ctx = c.getContext('2d');
+      const g = ctx.createRadialGradient(16,16,0,16,16,16);
+      g.addColorStop(0,'rgba(255,255,255,1)');
+      g.addColorStop(0.2,'rgba(255,255,255,0.8)');
+      g.addColorStop(1,'rgba(255,255,255,0)');
+      ctx.fillStyle = g; ctx.fillRect(0,0,32,32);
+      return new THREE.CanvasTexture(c);
+    })();
+
+    // ─── 1. Barbell particle swarm (monochrome) ───
+    const count = 5000;
+    const pos = new Float32Array(count * 3);
+    const basePos = new Float32Array(count * 3);
+    const particleSizes = new Float32Array(count);
+    const particlePhases = new Float32Array(count); // for per-particle animation offset
+
+    function disc(cx, R, T) {
+      const x = cx + (Math.random() - 0.5) * T;
+      const a = Math.random() * Math.PI * 2;
+      const r = R * Math.sqrt(Math.random());
+      return { x, y: r * Math.cos(a), z: r * Math.sin(a) };
+    }
+
+    for (let i = 0; i < count; i++) {
+      const shape = Math.random();
+      let x, y, z;
+      if (shape < 0.3) {
+        // Bar
+        x = (Math.random() - 0.5) * 10;
+        const a = Math.random() * Math.PI * 2;
+        const r = 0.3 * Math.sqrt(Math.random());
+        y = r * Math.cos(a); z = r * Math.sin(a);
+      } else {
+        const side = shape < 0.6 ? -1 : 1;
+        const wp = Math.random();
+        let cx, R, T;
+        if (wp < 0.3) { cx = side * 5.0; R = 2.4; T = 0.35; }
+        else if (wp < 0.55) { cx = side * 4.5; R = 2.0; T = 0.3; }
+        else if (wp < 0.8) { cx = side * 4.0; R = 1.6; T = 0.25; }
+        else { cx = side * 5.5; R = 1.2; T = 0.2; }
+        const p = disc(cx, R, T);
+        x = p.x; y = p.y; z = p.z;
+      }
+      pos[i*3] = x; pos[i*3+1] = y; pos[i*3+2] = z;
+      basePos[i*3] = x; basePos[i*3+1] = y; basePos[i*3+2] = z;
+      particleSizes[i] = 0.06 + Math.random() * 0.15;
+      particlePhases[i] = Math.random() * Math.PI * 2;
+    }
+
+    // Colors: all white
+    const colors = new Float32Array(count * 3);
+    for (let i = 0; i < count * 3; i++) colors[i] = 1.0;
+
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    geo.setAttribute('size', new THREE.BufferAttribute(particleSizes, 1));
+
+    const mat = new THREE.PointsMaterial({
+      size: 0.15, map: tex, blending: THREE.AdditiveBlending,
+      depthWrite: false, transparent: true, vertexColors: true, opacity: 0.9,
+      sizeAttenuation: true,
+    });
+    const pts = new THREE.Points(geo, mat);
+    scene.add(pts);
+
+    // ─── 2. Giant torus knot (main 3D object) ───
+    const knotGeo = new THREE.TorusKnotGeometry(2.5, 0.6, 160, 24);
+    const knotMat = new THREE.MeshBasicMaterial({
+      color: 0xffffff, wireframe: true, transparent: true, opacity: 0.08,
+    });
+    const knot = new THREE.Mesh(knotGeo, knotMat);
+    knot.position.set(0, -2, -3);
+    scene.add(knot);
+
+    // ─── 3. Second knot (smaller, inner) ───
+    const knot2Geo = new THREE.TorusKnotGeometry(1.2, 0.3, 100, 16);
+    const knot2Mat = new THREE.MeshBasicMaterial({
+      color: 0xffffff, wireframe: true, transparent: true, opacity: 0.12,
+    });
+    const knot2 = new THREE.Mesh(knot2Geo, knot2Mat);
+    scene.add(knot2);
+
+    // ─── 4. Floating geometric shapes ───
+    const shapes = [];
+    const shapeConfigs = [
+      { geo: new THREE.IcosahedronGeometry(0.5, 1), pos: [4, 3, -2], speed: 0.4, color: 0xffffff, opacity: 0.06 },
+      { geo: new THREE.OctahedronGeometry(0.4, 0), pos: [-3.5, -1, -1], speed: 0.3, color: 0xffffff, opacity: 0.05 },
+      { geo: new THREE.DodecahedronGeometry(0.6, 0), pos: [3, -2, -2.5], speed: 0.35, color: 0xffffff, opacity: 0.04 },
+      { geo: new THREE.TetrahedronGeometry(0.45, 0), pos: [-4, 2, -1.5], speed: 0.5, color: 0xffffff, opacity: 0.07 },
+      { geo: new THREE.BoxGeometry(0.5, 0.5, 0.5), pos: [0, 4, -3], speed: 0.25, color: 0xffffff, opacity: 0.05 },
+    ];
+    for (const cfg of shapeConfigs) {
+      const m = new THREE.MeshBasicMaterial({ color: cfg.color, wireframe: true, transparent: true, opacity: cfg.opacity });
+      const mesh = new THREE.Mesh(cfg.geo, m);
+      mesh.position.set(cfg.pos[0], cfg.pos[1], cfg.pos[2]);
+      mesh.userData = { speed: cfg.speed, baseY: cfg.pos[1], baseX: cfg.pos[0], phase: Math.random() * Math.PI * 2 };
+      scene.add(mesh);
+      shapes.push(mesh);
+    }
+
+    // ─── 5. Grid floor rings ───
+    const ringGroup = new THREE.Group();
+    for (let r = 0; r < 5; r++) {
+      const ringG = new THREE.RingGeometry(2 + r * 1.5, 2.1 + r * 1.5, 64);
+      const ringM = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.03, side: THREE.DoubleSide, wireframe: true });
+      const ringMesh = new THREE.Mesh(ringG, ringM);
+      ringMesh.rotation.x = -Math.PI / 2;
+      ringMesh.position.y = -4 - r * 0.5;
+      ringGroup.add(ringMesh);
+    }
+    scene.add(ringGroup);
+
+    // ─── 6. Floating line grid ───
+    const lineGroup = new THREE.Group();
+    for (let i = -5; i <= 5; i++) {
+      const pts3 = [new THREE.Vector3(i * 1.2, -3, -6), new THREE.Vector3(i * 1.2, -3, 2)];
+      const lineG = new THREE.BufferGeometry().setFromPoints(pts3);
+      const lineM = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.02 });
+      const line = new THREE.Line(lineG, lineM);
+      lineGroup.add(line);
+    }
+    for (let i = -4; i <= 2; i++) {
+      const pts3 = [new THREE.Vector3(-6, -3, i * 1.2), new THREE.Vector3(6, -3, i * 1.2)];
+      const lineG = new THREE.BufferGeometry().setFromPoints(pts3);
+      const lineM = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.02 });
+      const line = new THREE.Line(lineG, lineM);
+      lineGroup.add(line);
+    }
+    scene.add(lineGroup);
+
+    // ─── 7. Floating particle ring (scroll-reactive) ───
+    const ringCount = 600;
+    const ringPos = new Float32Array(ringCount * 3);
+    const ringBase = new Float32Array(ringCount * 3);
+    for (let i = 0; i < ringCount; i++) {
+      const a = (i / ringCount) * Math.PI * 2;
+      const rad = 5 + Math.sin(a * 3) * 1.5 + Math.cos(a * 7) * 0.5;
+      const x = Math.cos(a) * rad;
+      const y = Math.sin(a) * rad + 2;
+      const z = (Math.random() - 0.5) * 0.5;
+      ringPos[i*3] = x; ringPos[i*3+1] = y; ringPos[i*3+2] = z;
+      ringBase[i*3] = x; ringBase[i*3+1] = y; ringBase[i*3+2] = z;
+    }
+    const ringGeo = new THREE.BufferGeometry();
+    ringGeo.setAttribute('position', new THREE.BufferAttribute(ringPos, 3));
+    const ringMat = new THREE.PointsMaterial({
+      size: 0.06, color: 0xffffff, transparent: true, opacity: 0.15,
+      blending: THREE.AdditiveBlending, depthWrite: false, map: tex,
+    });
+    const ringPts = new THREE.Points(ringGeo, ringMat);
+    scene.add(ringPts);
+
+    camera.position.z = 12;
+
+    // ─── Mouse ───
+    let mx = 0, my = 0, tx = 0, ty = 0;
+    document.addEventListener('mousemove', e => {
+      tx = (e.clientX/window.innerWidth)*2-1;
+      ty = -(e.clientY/window.innerHeight)*2+1;
+    });
+
+    // ─── Scroll ───
+    let scrollY = 0;
+    window.addEventListener('scroll', () => {
+      scrollY = window.scrollY;
+    });
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth/window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    // ─── Animation ───
+    const clock = new THREE.Clock();
+    function animate() {
+      requestAnimationFrame(animate);
+      const t = clock.getElapsedTime();
+
+      mx += (tx - mx) * 0.18;
+      my += (ty - my) * 0.18;
+
+      // Scroll progress (0 = top, 1 = bottom of full content ≈ 4000px)
+      const progress = Math.min(1, scrollY / 3500);
+      
+      // ─── Barbell particles ───
+      // At different scroll points, particles do different things
+      const positions = pts.geometry.attributes.position.array;
+      const hbPulse = Math.max(0, Math.sin(t * 2.4)) ** 4 * 0.6;
+
+      for (let i = 0; i < count; i++) {
+        const idx = i * 3;
+        const bx = basePos[idx];
+        const by = basePos[idx + 1];
+        const bz = basePos[idx + 2];
+        const dist = Math.sqrt(bx*bx + by*by + bz*bz);
+        const dirX = bx / (dist || 1);
+        const dirY = by / (dist || 1);
+        const dirZ = bz / (dist || 1);
+        
+        // Normal pulse + scroll-driven expansion
+        const scrollExpand = progress * 1.0;
+        const p = (hbPulse * 0.4 + scrollExpand * 0.15) * (1 + Math.sin(dist * 2 + t * particlePhases[i]) * 0.3);
+        positions[idx] = bx + dirX * p;
+        positions[idx + 1] = by + dirY * p;
+        positions[idx + 2] = bz + dirZ * p;
+      }
+      pts.geometry.attributes.position.needsUpdate = true;
+
+      // Particle opacity fades with scroll
+      pts.material.opacity = Math.max(0.1, 0.9 - progress * 0.6);
+
+      // Particle rotation = mouse + scroll
+      pts.rotation.x = t * 0.02 + my * 0.4 + progress * 0.8;
+      pts.rotation.y = t * 0.03 + mx * 0.6 + progress * 1.2;
+
+      // Size changes with scroll
+      pts.material.size = 0.15 + progress * 0.2;
+
+      // ─── Torus knots ───
+      knot.rotation.x = t * 0.15 + progress * 1.5;
+      knot.rotation.y = t * 0.2 + progress * 2.0 + mx * 0.3;
+      knot.position.y = -2 + progress * 3;
+      knot.material.opacity = 0.08 + progress * 0.12;
+
+      knot2.rotation.x = -t * 0.2 - progress * 1.2;
+      knot2.rotation.y = -t * 0.25 - progress * 1.8 + my * 0.2;
+      knot2.position.y = 0 + progress * 2;
+      knot2.position.x = mx * 0.5;
+      knot2.material.opacity = 0.12 + progress * 0.08;
+
+      // ─── Floating shapes ───
+      for (const s of shapes) {
+        s.rotation.x = t * s.userData.speed + progress * 2;
+        s.rotation.y = t * s.userData.speed * 1.5 + progress * 3;
+        const bob = Math.sin(t * s.userData.speed + s.userData.phase) * 0.3 + progress * 2;
+        s.position.y = s.userData.baseY + bob;
+        s.position.x = s.userData.baseX + Math.sin(t * s.userData.speed * 0.5 + s.userData.phase) * 0.5 + mx * 0.3;
+        s.material.opacity = (s.userData.opacity || 0.05) + progress * 0.05;
+      }
+
+      // ─── Ring grid ───
+      ringGroup.position.y = -4 + progress * 6;
+      ringGroup.rotation.z = progress * 2;
+      ringGroup.material && (ringGroup.material.opacity = 0.03 + progress * 0.05);
+
+      // ─── Line grid ───
+      lineGroup.position.y = -3 + progress * 5;
+      lineGroup.rotation.z = progress * 0.5;
+
+      // ─── Floating particle ring ───
+      const ringPositions = ringPts.geometry.attributes.position.array;
+      for (let i = 0; i < ringCount; i++) {
+        const idx = i * 3;
+        const bx = ringBase[idx];
+        const by = ringBase[idx + 1];
+        const bz = ringBase[idx + 2];
+        const wave = Math.sin(t * 0.8 + i * 0.05 + progress * 4) * 0.3 * (1 + progress * 2);
+        ringPositions[idx] = bx + Math.sin(t * 0.5 + i * 0.03) * 0.2;
+        ringPositions[idx + 1] = by + wave;
+        ringPositions[idx + 2] = bz + Math.cos(t * 0.3 + i * 0.02) * 0.2;
+      }
+      ringPts.geometry.attributes.position.needsUpdate = true;
+      ringPts.rotation.z = t * 0.05 + progress * 2;
+      ringPts.material.opacity = 0.15 + progress * 0.2;
+
+      // ─── Camera ───
+      camera.position.x += (mx * 3 - camera.position.x) * 0.04;
+      camera.position.y += (my * 2 - camera.position.y) * 0.04 - progress * 2;
+      camera.position.z = 12 - progress * 3;
+      camera.lookAt(0, 0, 0);
+
+      renderer.render(scene, camera);
+    }
+    animate();
+
+    // ─── Counter animation (scroll only) ───
+    window.addEventListener('scroll', () => {
+      const s = window.scrollY;
+      const opacity = Math.max(0, 1 - s / window.innerHeight * 1.5);
+      // Already handled in barbell
+    });
+  </script>
+
+  <!-- ─── Counter + Scroll Reveal ─── -->
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // ─── Count Up ───
+      const counters = document.querySelectorAll('.stat-num[data-count]');
+      const counterObs = new IntersectionObserver(entries => {
+        entries.forEach(e => {
+          if (e.isIntersecting) {
+            const el = e.target;
+            const target = parseInt(el.dataset.count);
+            let current = 0;
+            const step = Math.ceil(target / 40);
+            const interval = setInterval(() => {
+              current += step;
+              if (current >= target) { current = target; clearInterval(interval); }
+              el.textContent = current;
+            }, 30);
+            counterObs.unobserve(el);
+          }
+        });
+      }, { threshold: 0.5 });
+      counters.forEach(c => counterObs.observe(c));
+
+      // ─── Reveal ───
+      const obs = new IntersectionObserver(entries => {
+        entries.forEach(e => {
+          if (e.isIntersecting) { e.target.classList.add('visible'); }
+        });
+      }, { threshold: 0.15, rootMargin: '0px 0px -50px 0px' });
+      document.querySelectorAll('.reveal, .reveal-scale').forEach(el => obs.observe(el));
+      
+      // Close mobile nav
+      document.querySelectorAll('.links a').forEach(a => {
+        a.addEventListener('click', () => document.getElementById('navLinks').classList.remove('open'));
+      });
+    });
+  </script>
+
+</body>
+</html>
